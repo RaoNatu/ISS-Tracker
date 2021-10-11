@@ -38,61 +38,69 @@ def is_night():
 
 def get_location():
     try:
-        data_iss_location = requests.get(f"https://us1.locationiq.com/v1/reverse.php?key={api_key}"
-                                         f"&lat={latitude}&lon={longitude}&format=json").json()
-        print(data_iss_location["display_name"])
-        return data_iss_location["display_name"]
+        # data_iss_location = requests.get(f"https://us1.locationiq.com/v1/reverse.php?key={api_key}"
+        #                                  f"&lat={latitude}&lon={longitude}&format=json").json()
+
+        data_iss_location = requests.get("https://api.bigdatacloud.net/data/reverse-geocode-client?"
+                                         f"latitude={latitude}&longitude={longitude}&localityLanguage=en").json()
+
+        # data_iss_location = requests.get("https://api.bigdatacloud.net/data/reverse-geocode-client?"
+        #                                  "latitude=37.42159&longitude=-122.0837&localityLanguage=en").json()
+
+        iss_location_info = ""
+        if data_iss_location["localityInfo"]["administrative"]:
+            for i in range(0, 4):
+                iss_location_info += data_iss_location["localityInfo"]["administrative"][i]["name"] + ", "
+        else:
+            print("Entering Else")
+            iss_location_info = data_iss_location["localityInfo"]["informative"][0]["name"] + ", "
+        print(iss_location_info[0:-2])
+        return iss_location_info[0:-2]
     except KeyError:
         pass
+
+
+def send_mail(text=""):
+    connection = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+    connection.login(email, password)
+    msg = MIMEText(f"International Space Station is at: {iss_location}\n\n"
+                   f"Longitude: {longitude}\n\nLatitude: {latitude}\n\n{text}")
+    msg["Subject"] = "ISS Tracker"
+    msg["From"] = email
+    msg["To"] = to_email
+    try:
+        connection.sendmail(from_addr=email,
+                            to_addrs=to_email,
+                            msg=msg.as_string())
+        print("Mail Sent!")
+        connection.close()
+    except Exception as e:
+        print(f"Mail not Sent: {e}")
 
 
 load_dotenv()
 email = os.environ["EMAIL"]
 password = os.environ["PASSWORD"]
-api_key = os.environ["API_KEY"]
-to_email = ""   # Receiver Email
+# api_key = os.environ["API_KEY"]
+to_email = "raoshreyayadav@yahoo.com"   # Receiver Email
 
 while True:
-    connection = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-    connection.login(email, password)
     iss_location = get_location()
-    msg = MIMEText(f"International Space Station is at {iss_location}")
-    msg["Subject"] = "ISS Tracker"
-    msg["From"] = email
-    msg["To"] = to_email
     if is_iss_overhead() and is_night():
-        try:
-            connection.sendmail(from_addr=email,
-                                to_addrs=to_email,
-                                msg=f"{msg.as_string()}\n\nLook Above!")
-            print("In your Area!")
-            print("Mail Sent!")
-            connection.close()
-        except Exception as e:
-            print(f"Mail not Sent: {e}")
-
+        send_mail("In Your Area! Look Above ☝️")
+        time.sleep(7080)
     elif is_night():
         if iss_location is not None:
-            connection.sendmail(from_addr=email,
-                                to_addrs=to_email,
-                                msg=msg.as_string())
-            print("Mail Sent!")
-            print("Night Time: Sleeping for 5 minutes")
-            time.sleep(5)
-            connection.close()
-            time.sleep(180)
+            print("Night Time: Next Detection in 30 minutes")
+            send_mail("It's Night Time! May get a chance to see ISS.")
+            time.sleep(1180)
         else:
             print("ISS is at None Location")
     else:
         if iss_location is not None:
-            connection.sendmail(from_addr=email,
-                                to_addrs=to_email,
-                                msg=msg.as_string())
-            print("Mail Sent!")
-            print("Day Time: Sleeping for 1 hour")
-            time.sleep(5)
-            connection.close()
-            time.sleep(3480)
+            print("Day Time: Next Detection in 2 hours")
+            send_mail("Next message in 2 hours")
+            time.sleep(7080)
         else:
             print("ISS is at None Location")
     print("Next Detection in 2 minutes")
